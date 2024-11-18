@@ -267,9 +267,8 @@ if(isset($_POST['totalCriarCadastro'])){
                 // gera os NUMEROS DO TELEFONE PARA SE UNIR AO DDD SORTEADO 
 
                 // monta o TELEFONE COMPLETO
-                $telefone = array_rand($ddd)."9".rand(6111,9999)."-".rand(1111,9999)
+                $telefone = array_rand($ddd)."9".rand(6111,9999)."-".rand(1111,9999);
                 
-                //  inicia_validacao_data_nascimento:
                 inicia_validacao_data_nascimento:
 
                 // sorteia o ANO DO NASCIMENTO
