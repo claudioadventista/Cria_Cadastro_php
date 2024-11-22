@@ -1,4 +1,22 @@
 <?php
+/*
+
+Esse codigo cria cadastros num banco mysql, para testes de sistemas.
+uma tabela, e 10 colunas.
+algumas colunas estao relacionada uma com a outra para parecer mais realista.
+a coluna sexo, esta relacionada com a coluna nome.
+a coluna cpf, esta relacionada com a coluna estado.
+a coluna estado esta relacionada com a coluna local de nascimento e ddd do telefone.
+a coluna data de nascimento, esta relacionada com o ano bissexto, e o estado civil.
+
+algumas colunas foram programadas para nao se repetir.
+a coluna cpf nao pode conter em mais de um cadastro.
+a coluna telefone nao pode conter em mais de um cadastro.
+a coluna nome, sexo, local de nascimento, estado, ano bissexto e estado civil, pode ser repetida inumeras vezes.
+a coluna data de nascimento foi programada para nao gerar uma data inferior a data atual.
+a coluna idade, nao esta na tabela, ela e calcula com os dados da data de nascimento e a dada atual.
+
+*/
 
 // informacao para se conectar ao banco mysql
 $host = 'localhost';
@@ -18,6 +36,7 @@ if(isset($_POST['excluir'])){
 // recebe o VALOR DO FORMULARIO
 $cadastro = filter_input(INPUT_POST, "totalCriarCadastro", FILTER_SANITIZE_STRING);
 if(isset($_POST['totalCriarCadastro'])){
+
     $total = trim($_POST['totalCriarCadastro']);
     $sorteado = "";
 
@@ -50,6 +69,7 @@ if(isset($_POST['totalCriarCadastro'])){
 
     $totRepetido = 0;
     $contaDataMaior = 0;
+    $contaTelefone = 0;
     $estado = "";
 
      // funcao sorteia o MES
@@ -121,6 +141,7 @@ if(isset($_POST['totalCriarCadastro'])){
 
     // inicia a VALIDACAO DO CADASTRO PARA GERAR NO BANCO
     if($total){
+        $tm_inicio = time(true);
         for ($contaCad = 0; $contaCad < $total; $contaCad++){
 
                 // sorteia o SEXO do cadastro
@@ -264,11 +285,25 @@ if(isset($_POST['totalCriarCadastro'])){
                 // sorteia UMA CIDADE NA LINHA DO ESTADO SORTEADO
                 $cidade = array_rand($cidade2);
 
-                // gera os NUMEROS DO TELEFONE PARA SE UNIR AO DDD SORTEADO 
+               
+                inicia_validacao_tel:
+                 // monta o TELEFONE COMPLETO
+                $telefone = array_rand($ddd)."9".rand(5111,9999)."-".rand(1000,9999);
 
-                // monta o TELEFONE COMPLETO
-                $telefone = array_rand($ddd)."9".rand(6111,9999)."-".rand(1111,9999);
+                // essa rotina VERIFICA SE O TELEFONE GERADO JA FOI CADASTRADO NO BANCO
+                $validaTelefone = "SELECT telefone FROM cadastrar WHERE telefone = '$telefone'";
+                $query_telefone = mysqli_query($conn, $validaTelefone);
+                $query_resutado_tel = mysqli_num_rows($query_telefone);
                 
+                // se o telefone for encontrado no banco...
+                if($query_resutado_tel >0){
+                    $contaTelefone++;
+  
+                    // retorna e GERA UM NOVO TELEFONE
+                    goto inicia_validacao_tel;
+                };
+                
+                //  inicia_validacao_data_nascimento:
                 inicia_validacao_data_nascimento:
 
                 // sorteia o ANO DO NASCIMENTO
@@ -312,8 +347,6 @@ if(isset($_POST['totalCriarCadastro'])){
                      // ...retorna e GERA UMA NOVA DATA DE NASCIMENTO
                      goto inicia_validacao_data_nascimento;    
 
-                }else{
-                    $contaDataMaior == 0;  
                 };
 
                 // verifica A IDADE PELA DATA DE NASCIMENTO GERADA
@@ -340,6 +373,7 @@ if(isset($_POST['totalCriarCadastro'])){
                     $civil = array_rand($estadoCivil);
                 };
 
+                
                 mysqli_query($conn, "SET NAMES 'utf8';");
                 $insere = "INSERT INTO cadastrar VALUES ('','$nome','$sexo','$cpf','$cidade','$estado','$telefone','$dataNascimento','$bissexto','$civil')";
                 $query_cadastro = mysqli_query($conn, $insere);
@@ -347,6 +381,7 @@ if(isset($_POST['totalCriarCadastro'])){
         };
         
     };
+    $tm_fim = time(true);
 };
 
 // consulta para CONTAR O TOTAL DE CADASTROS GERADOS NO BANCO
@@ -394,9 +429,11 @@ $lista_tabela = mysqli_query($conn,"SELECT * FROM cadastrar ORDER BY id desc LIM
                 }
                 tr:nth-child(odd){
                     background-color:#ccc;
+                    border-color:#bbb;
                 }
                 tr:nth-child(even){
                     background-color:#eee;
+                    border-color:#bbb;
                 }
              
     </style>
@@ -428,7 +465,7 @@ $lista_tabela = mysqli_query($conn,"SELECT * FROM cadastrar ORDER BY id desc LIM
                         <th>Estado</th>
                         <th>Telefone</th>
                         <th>Dt Nascimento</th>
-                        <th>Bissexto</th>
+                        <th>Ano Bissexto</th>
                         <th>Idade</th>
                         <th>Estado Civil</th>
                     </tr>
@@ -485,12 +522,71 @@ $lista_tabela = mysqli_query($conn,"SELECT * FROM cadastrar ORDER BY id desc LIM
                 <?php };?>
                 </tbody>
         </table>
+        <br>
         <?php 
+        if(isset($tm_inicio)){ 
+            echo "Tempo decorrido - "; 
+
+            // contagem do tempo de execussao
+            $tempoDecorrido = $tm_fim - $tm_inicio; 
+            $horas = floor($tempoDecorrido/3600);
+            $minutos = floor(($tempoDecorrido - ($horas * 3600))/60);
+            $segundos = floor($tempoDecorrido % 60);
+            
+            // mostra o resultado de hora, minuto e segundo, no formato 00:00:00
+        echo str_pad($horas,2,0, STR_PAD_LEFT).":".str_pad($minutos,2,0, STR_PAD_LEFT).":".str_pad($segundos,2,0,STR_PAD_LEFT);};
+        
+        // mostra a quantidade de data inferior a data atual, que gerou 
         if((isset($contaDataMaior) AND ( $contaDataMaior<> 0))){echo "<br>Gerou uma nova data ".$contaDataMaior;};
+
+        // mostra a quantidade de cpf que foram gerados e que ja haviam sido cadastrados
         if((isset($totRepetido) AND ( $totRepetido <> 0))){echo "<br>Gerou um novo cpf ".$totRepetido;};
+
+        // mostra a quantidade de telefone que foram gerados e que ja haviam sido cadastrados
+        if((isset($contaTelefone) AND ( $contaTelefone <> 0))){echo "<br>Gerou um novo telefone ".$contaTelefone;};
+        echo '<br>';
+
+        // verifica se algum cpf foi duplicado, e agrupa numa lista
+        $sql = "SELECT COUNT(cpf)AS contador, cpf FROM cadastrar GROUP BY cpf HAVING COUNT(cpf) >1 ORDER BY count(cpf) DESC";
+        $result = $conn->query($sql);
+        
+        // se houver algum cpf duplicado, gera uma lista
+        if($result->num_rows > 0){
+            $soma = 0;
+            while($row = $result->fetch_assoc()){
+               $cpf = $row["cpf"];
+               $contador = $row["contador"];
+               $soma = $soma + 1;
+               echo "<font color=red>Encontrado $soma CPF : $cpf, duplicado $contador vezes <br>";  
+               
+            };   
+        }else{
+            echo"Nenhum CPF duplicado foi encontrado<br>";
+        };
+
+        // verifica se algum telefone foi duplicado, e agrupa numa lista
+        $sql = "SELECT COUNT(telefone)AS contador, telefone FROM cadastrar GROUP BY telefone HAVING COUNT(telefone) >1 ORDER BY count(telefone) DESC";
+        $result = $conn->query($sql);
+        
+       // se houver algum telefone duplicado, gera uma lista
+        if($result->num_rows > 0){
+            $soma = 0;
+            while($row = $result->fetch_assoc()){
+               $telefone = $row["telefone"];
+               $contador = $row["contador"];
+               $soma = $soma + 1;
+               echo "<font color=red>Encontrado $soma telefone : $telefone, duplicado: $contador vezes <br>";  
+               
+            };   
+        }else{
+            echo"Nenhum Telefone duplicado foi encontrado<br>";
+        };
+
         ?>
            <script src="custom.js"></script>
            <script>
+
+            // permite apenas numeors para escolher um valor a ser criado
             function SomenteNumero(e) {
                 var tecla = (window.event) ? event.keyCode : e.which;
                 if ((tecla > 47 && tecla < 58))
